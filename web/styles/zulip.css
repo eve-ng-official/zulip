@@ -225,6 +225,7 @@ body {
     --color-background-tab-picker-selected-tab: hsl(0deg 0% 100%);
     --color-outline-tab-picker-tab-option: hsl(0deg 0% 0% / 30%);
     --color-background-tab-picker-tab-option-hover: hsl(0deg 0% 100% / 60%);
+    --color-buddy-list-highlighted-user: hsl(120deg 12.3% 71.4% / 38%);
 
     /* Compose box colors */
     --color-compose-send-button-icon-color: hsl(0deg 0% 100%);
@@ -481,6 +482,7 @@ body {
     --color-background-tab-picker-selected-tab: hsl(0deg 0% 100% / 7%);
     --color-outline-tab-picker-tab-option: hsl(0deg 0% 100% / 12%);
     --color-background-tab-picker-tab-option-hover: hsl(0deg 0% 100% / 5%);
+    --color-buddy-list-highlighted-user: hsl(136deg 25% 73% / 20%);
 
     /* Compose box colors */
     --color-compose-send-button-focus-shadow: hsl(0deg 0% 100% / 80%);

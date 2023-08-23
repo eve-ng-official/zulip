@@ -96,7 +96,8 @@ export function build_user_sidebar() {
 
     buddy_list.populate({keys: user_ids});
 
-    render_empty_user_list_message_if_needed(buddy_list.$container);
+    render_empty_user_list_message_if_needed(buddy_list.$users_matching_view_container);
+    render_empty_user_list_message_if_needed(buddy_list.$other_users_container);
 
     return user_ids; // for testing
 }

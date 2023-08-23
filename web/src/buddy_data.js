@@ -1,11 +1,17 @@
+import $ from "jquery";
+
+import render_empty_list_widget_for_list from "../templates/empty_list_widget_for_list.hbs";
+
 import * as blueslip from "./blueslip";
 import * as compose_fade_users from "./compose_fade_users";
 import * as hash_util from "./hash_util";
 import {$t} from "./i18n";
 import * as muted_users from "./muted_users";
+import * as narrow_state from "./narrow_state";
 import {page_params} from "./page_params";
 import * as people from "./people";
 import * as presence from "./presence";
+import * as stream_data from "./stream_data";
 import * as timerender from "./timerender";
 import * as unread from "./unread";
 import {user_settings} from "./user_settings";
@@ -24,8 +30,30 @@ import * as util from "./util";
 export const max_size_before_shrinking = 600;
 
 let is_searching_users = false;
+
+// TODO: This should ideally be in buddy_list.js since it uses jquery,
+// but can't be easily placed there due to import cycles.
+function update_other_users_empty_placeholder() {
+    const empty_list_message = is_searching_users
+        ? $t({defaultMessage: "No matching users."})
+        : $t({defaultMessage: "None."});
+    // We're only setting this on the "other users" list, since
+    // the "users matching view" list can never be empty outside of search
+    // and therefore always has the same empty placeholder.
+    $("#buddy-list-other-users").data("search-results-empty", empty_list_message);
+    if ($("#buddy-list-other-users .empty-list-message").length) {
+        const empty_list_widget = render_empty_list_widget_for_list({empty_list_message});
+        $("#buddy-list-other-users").empty();
+        $("#buddy-list-other-users").append(empty_list_widget);
+    }
+}
+
 export function set_is_searching_users(val) {
+    if (is_searching_users === val) {
+        return;
+    }
     is_searching_users = val;
+    update_other_users_empty_placeholder();
 }
 
 const fade_config = {
@@ -71,7 +99,26 @@ export function level(user_id) {
     }
 }
 
-export function compare_function(a, b) {
+export function user_matches_narrow(user_id, stream_id, pm_ids) {
+    if (stream_id) {
+        return stream_data.is_user_subscribed(stream_id, user_id);
+    }
+    if (pm_ids.size > 0) {
+        return pm_ids.has(user_id) || people.is_my_user_id(user_id);
+    }
+    return false;
+}
+
+export function compare_function(a, b, current_sub, pm_ids) {
+    const a_would_receive_message = user_matches_narrow(a, current_sub?.stream_id, pm_ids);
+    const b_would_receive_message = user_matches_narrow(b, current_sub?.stream_id, pm_ids);
+    if (a_would_receive_message && !b_would_receive_message) {
+        return -1;
+    }
+    if (!a_would_receive_message && b_would_receive_message) {
+        return 1;
+    }
+
     const level_a = level(a);
     const level_b = level(b);
     const diff = level_a - level_b;
@@ -91,7 +138,11 @@ export function compare_function(a, b) {
 
 export function sort_users(user_ids) {
     // TODO sort by unread count first, once we support that
-    user_ids.sort(compare_function);
+    const current_sub = narrow_state.stream_sub();
+    const pm_ids_string = narrow_state.pm_ids_string();
+    const pm_ids_list = pm_ids_string ? people.user_ids_string_to_ids_array(pm_ids_string) : [];
+    const pm_ids_set = new Set(pm_ids_list);
+    user_ids.sort((a, b) => compare_function(a, b, current_sub, pm_ids_set));
     return user_ids;
 }
 
@@ -250,7 +301,15 @@ function maybe_shrink_list(user_ids, user_filter_text) {
         return user_ids;
     }
 
-    user_ids = user_ids.filter((user_id) => user_is_recently_active(user_id));
+    // We want to always show PM recipients even if they're inactive.
+    const pm_ids_string = narrow_state.pm_ids_string();
+    const pm_ids_list = pm_ids_string ? people.user_ids_string_to_ids_array(pm_ids_string) : [];
+    const pm_ids_set = new Set(pm_ids_list);
+
+    user_ids = user_ids.filter(
+        (user_id) =>
+            user_is_recently_active(user_id) || user_matches_narrow(user_id, null, pm_ids_set),
+    );
 
     return user_ids;
 }

@@ -6,11 +6,14 @@ import render_presence_rows from "../templates/presence_rows.hbs";
 import * as blueslip from "./blueslip";
 import * as buddy_data from "./buddy_data";
 import * as message_viewport from "./message_viewport";
+import * as narrow_state from "./narrow_state";
 import * as padded_widget from "./padded_widget";
+import * as people from "./people";
 import * as scroll_util from "./scroll_util";
 
 class BuddyListConf {
-    container_sel = "#buddy-list-users-matching-view";
+    matching_view_list_selector = "#buddy-list-users-matching-view";
+    other_user_list_selector = "#buddy-list-other-users";
     scroll_container_sel = "#buddy_list_wrapper";
     item_sel = "li.user_sidebar_entry";
     padding_sel = "#buddy_list_wrapper_padding";
@@ -27,8 +30,10 @@ class BuddyListConf {
 
     get_li_from_key(opts) {
         const user_id = opts.key;
-        const $container = $(this.container_sel);
-        return $container.find(`${this.item_sel}[data-user-id='${CSS.escape(user_id)}']`);
+        const $users_matching_view_container = $(this.matching_view_list_selector);
+        return $users_matching_view_container.find(
+            `${this.item_sel}[data-user-id='${CSS.escape(user_id)}']`,
+        );
     }
 
     get_key_from_li(opts) {
@@ -58,7 +63,8 @@ export class BuddyList extends BuddyListConf {
 
     populate(opts) {
         this.render_count = 0;
-        this.$container.empty();
+        this.$users_matching_view_container.empty();
+        this.$other_users_container.empty();
 
         // We rely on our caller to give us items
         // in already-sorted order.
@@ -80,12 +86,55 @@ export class BuddyList extends BuddyListConf {
         }
 
         const items = this.get_data_from_keys(more_keys);
+        const subscribed_users = [];
+        const other_users = [];
+        const current_sub = narrow_state.stream_sub();
+        const pm_ids_string = narrow_state.pm_ids_string();
+        const pm_ids_list = pm_ids_string ? people.user_ids_string_to_ids_array(pm_ids_string) : [];
+        const pm_ids_set = new Set(pm_ids_list);
 
-        const html = this.items_to_html({
-            items,
+        for (const item of items) {
+            if (buddy_data.user_matches_narrow(item.user_id, current_sub?.stream_id, pm_ids_set)) {
+                subscribed_users.push(item);
+            } else {
+                other_users.push(item);
+            }
+        }
+
+        // Remove the empty list message before adding users
+        if (
+            $(`${this.matching_view_list_selector} .empty-list-message`).length > 0 &&
+            subscribed_users.length
+        ) {
+            this.$users_matching_view_container.empty();
+        }
+        const subscribed_users_html = this.items_to_html({
+            items: subscribed_users,
         });
-        this.$container = $(this.container_sel);
-        this.$container.append(html);
+        this.$users_matching_view_container = $(this.matching_view_list_selector);
+        this.$users_matching_view_container.append(subscribed_users_html);
+
+        // Remove the empty list message before adding users
+        if ($(`${this.other_user_list_selector} .empty-list-message`).length > 0 && other_users.length) {
+            this.$other_users_container.empty();
+        }
+        const other_users_html = this.items_to_html({
+            items: other_users,
+        });
+        this.$other_users_container = $(this.other_user_list_selector);
+        this.$other_users_container.append(other_users_html);
+
+        // If we have only "other users" then we don't show the headers (unless we're searching
+        // from a stream/DM view).
+        // Note that if we only have subscribed users, we still keep the sections visible.
+        const subscribed_users_is_empty =
+            this.$users_matching_view_container.children(".user_sidebar_entry").length === 0;
+        const hide_headers = subscribed_users_is_empty && !current_sub && !pm_ids_string;
+        $("#buddy-list-users-matching-view-container").toggleClass("no-display", hide_headers);
+        $("#buddy-list-other-users-container .buddy-list-subsection-header").toggleClass(
+            "no-display",
+            hide_headers,
+        );
 
         // Invariant: more_keys.length >= items.length.
         // (Usually they're the same, but occasionally keys
@@ -98,7 +147,7 @@ export class BuddyList extends BuddyListConf {
     }
 
     get_items() {
-        const $obj = this.$container.find(`${this.item_sel}`);
+        const $obj = this.$users_matching_view_container.find(`${this.item_sel}`);
         return $obj.map((_i, elem) => $(elem));
     }
 
@@ -147,10 +196,15 @@ export class BuddyList extends BuddyListConf {
         const key = opts.key;
         let i;
 
+        const current_sub = narrow_state.stream_sub();
+        const pm_ids_string = narrow_state.pm_ids_string();
+        const pm_ids_list = pm_ids_string ? people.user_ids_string_to_ids_array(pm_ids_string) : [];
+        const pm_ids_set = new Set(pm_ids_list);
+
         for (i = 0; i < this.keys.length; i += 1) {
             const list_key = this.keys[i];
 
-            if (this.compare_function(key, list_key) < 0) {
+            if (this.compare_function(key, list_key, current_sub, pm_ids_set) < 0) {
                 return i;
             }
         }
@@ -223,7 +277,7 @@ export class BuddyList extends BuddyListConf {
         if (new_key === undefined) {
             if (pos === this.render_count) {
                 this.render_count += 1;
-                this.$container.append(html);
+                this.$users_matching_view_container.append(html);
                 this.update_padding();
             }
             return;
@@ -288,7 +342,8 @@ export class BuddyList extends BuddyListConf {
 
     // This is a bit of a hack to make sure we at least have
     // an empty list to start, before we get the initial payload.
-    $container = $(this.container_sel);
+    $users_matching_view_container = $(this.matching_view_list_selector);
+    $other_users_container = $(this.other_user_list_selector);
 
     start_scroll_handler() {
         // We have our caller explicitly call this to make
@@ -304,7 +359,7 @@ export class BuddyList extends BuddyListConf {
         padded_widget.update_padding({
             shown_rows: this.render_count,
             total_rows: this.keys.length,
-            content_sel: this.container_sel,
+            content_sel: this.matching_view_list_selector,
             padding_sel: this.padding_sel,
         });
     }

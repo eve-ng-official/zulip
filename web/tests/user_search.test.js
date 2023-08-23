@@ -9,7 +9,10 @@ const {page_params} = require("./lib/zpage_params");
 
 const fake_buddy_list = {
     scroll_container_sel: "#whatever",
-    $container: {
+    $users_matching_view_container: {
+        data() {},
+    },
+    $other_users_container: {
         data() {},
     },
     find_li() {},
@@ -58,7 +61,7 @@ const all_user_ids = [alice.user_id, fred.user_id, jill.user_id, me.user_id];
 const ordered_user_ids = [me.user_id, alice.user_id, fred.user_id, jill.user_id];
 
 function test(label, f) {
-    run_test(label, ({override}) => {
+    run_test(label, (opts) => {
         people.init();
         people.add_active_user(alice);
         people.add_active_user(fred);
@@ -67,7 +70,7 @@ function test(label, f) {
         people.initialize_current_user(me.user_id);
         muted_users.set_muted_users([]);
         activity_ui.set_cursor_and_filter();
-        f({override});
+        f(opts);
     });
 }
 
@@ -76,11 +79,13 @@ function set_input_val(val) {
     $(".user-list-filter").trigger("input");
 }
 
-test("clear_search", ({override}) => {
+test("clear_search", ({override, mock_template}) => {
     override(presence, "get_status", () => "active");
     override(presence, "get_user_ids", () => all_user_ids);
     override(popovers, "hide_all", () => {});
     override(resize, "resize_sidebars", () => {});
+
+    mock_template("empty_list_widget_for_list.hbs", false, () => {});
 
     // Empty because no users match this search string.
     override(fake_buddy_list, "populate", (user_ids) => {
@@ -99,11 +104,12 @@ test("clear_search", ({override}) => {
     assert.ok($("#user_search_section").hasClass("notdisplayed"));
 });
 
-test("escape_search", ({override}) => {
+test("escape_search", ({override, mock_template}) => {
     page_params.realm_presence_disabled = true;
 
     override(resize, "resize_sidebars", () => {});
     override(popovers, "hide_all", () => {});
+    mock_template("empty_list_widget_for_list.hbs", false, () => {});
 
     set_input_val("somevalue");
     activity_ui.escape_search();
