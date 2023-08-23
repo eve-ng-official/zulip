@@ -530,6 +530,7 @@ body {
     --color-text-search: hsl(0deg 0% 100% / 75%);
     --color-text-search-hover: hsl(0deg 0% 100%);
     --color-text-search-placeholder: hsl(0deg 0% 100% / 50%);
+    --color-text-empty-list-message: hsl(0deg 0% 67%);
     --color-text-dropdown-menu: hsl(0deg 0% 100% / 80%);
     --color-text-full-name: hsl(0deg 0% 100%);
     --color-text-item: hsl(0deg 0% 50%);

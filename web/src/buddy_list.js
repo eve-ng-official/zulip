@@ -31,7 +31,15 @@ class BuddyListConf {
     get_li_from_key(opts) {
         const user_id = opts.key;
         const $users_matching_view_container = $(this.matching_view_list_selector);
-        return $users_matching_view_container.find(
+        const $li = $users_matching_view_container.find(
+            `${this.item_sel}[data-user-id='${CSS.escape(user_id)}']`,
+        );
+        if ($li.length > 0) {
+            return $li;
+        }
+
+        const $other_users_container = $(this.other_user_list_selector);
+        return $other_users_container.find(
             `${this.item_sel}[data-user-id='${CSS.escape(user_id)}']`,
         );
     }
@@ -40,8 +48,8 @@ class BuddyListConf {
         return Number.parseInt(opts.$li.expectOne().attr("data-user-id"), 10);
     }
 
-    get_data_from_keys(keys) {
-        const data = buddy_data.get_items_for_users(keys);
+    get_data_from_user_ids(user_ids) {
+        const data = buddy_data.get_items_for_users(user_ids);
         return data;
     }
 
@@ -59,16 +67,20 @@ class BuddyListConf {
 }
 
 export class BuddyList extends BuddyListConf {
-    keys = [];
+    all_user_ids = [];
+    users_matching_view_ids = [];
+    other_user_ids = [];
 
     populate(opts) {
         this.render_count = 0;
         this.$users_matching_view_container.empty();
+        this.users_matching_view_ids = [];
         this.$other_users_container.empty();
+        this.other_user_ids = [];
 
         // We rely on our caller to give us items
         // in already-sorted order.
-        this.keys = opts.keys;
+        this.all_user_ids = opts.keys;
 
         this.fill_screen_with_content();
     }
@@ -79,13 +91,13 @@ export class BuddyList extends BuddyListConf {
         const begin = this.render_count;
         const end = begin + chunk_size;
 
-        const more_keys = this.keys.slice(begin, end);
+        const more_user_ids = this.all_user_ids.slice(begin, end);
 
-        if (more_keys.length === 0) {
+        if (more_user_ids.length === 0) {
             return;
         }
 
-        const items = this.get_data_from_keys(more_keys);
+        const items = this.get_data_from_user_ids(more_user_ids);
         const subscribed_users = [];
         const other_users = [];
         const current_sub = narrow_state.stream_sub();
@@ -96,8 +108,10 @@ export class BuddyList extends BuddyListConf {
         for (const item of items) {
             if (buddy_data.user_matches_narrow(item.user_id, current_sub?.stream_id, pm_ids_set)) {
                 subscribed_users.push(item);
+                this.users_matching_view_ids.push(item.user_id);
             } else {
                 other_users.push(item);
+                this.other_user_ids.push(item.user_id);
             }
         }
 
@@ -139,53 +153,121 @@ export class BuddyList extends BuddyListConf {
             hide_headers,
         );
 
-        // Invariant: more_keys.length >= items.length.
-        // (Usually they're the same, but occasionally keys
+        // Invariant: more_user_ids.length >= items.length.
+        // (Usually they're the same, but occasionally user_ids
         // won't return valid items.  Even though we don't
-        // actually render these keys, we still "count" them
+        // actually render these users, we still "count" them
         // as rendered.
 
-        this.render_count += more_keys.length;
+        this.render_count += more_user_ids.length;
         this.update_padding();
     }
 
     get_items() {
-        const $obj = this.$users_matching_view_container.find(`${this.item_sel}`);
-        return $obj.map((_i, elem) => $(elem));
+        const $user_matching_view_obj = this.$users_matching_view_container.find(
+            `${this.item_sel}`,
+        );
+        const $users_matching_view_elems = $user_matching_view_obj.map((_i, elem) => $(elem));
+
+        const $other_user_obj = this.$other_users_container.find(`${this.item_sel}`);
+        const $other_user_elems = $other_user_obj.map((_i, elem) => $(elem));
+
+        return [...$users_matching_view_elems, ...$other_user_elems];
     }
 
     first_key() {
-        return this.keys[0];
+        if (this.users_matching_view_ids.length) {
+            return this.users_matching_view_ids[0];
+        }
+        if (this.other_user_ids.length) {
+            return this.other_user_ids[0];
+        }
+        return undefined;
     }
 
     prev_key(key) {
-        const i = this.keys.indexOf(key);
-
-        if (i <= 0) {
+        let i = this.users_matching_view_ids.indexOf(key);
+        // This would be the middle of the list of users matching view,
+        // moving to a prev user matching the view.
+        if (i > 0) {
+            return this.users_matching_view_ids[i - 1];
+        }
+        // If it's the first user matching the view, we don't move the selection.
+        if (i === 0) {
             return undefined;
         }
 
-        return this.keys[i - 1];
+        // This would be the middle of the other users list moving to a prev other user.
+        i = this.other_user_ids.indexOf(key);
+        if (i > 0) {
+            return this.other_user_ids[i - 1];
+        }
+        // The key before the first other user is the last user matching view, if that exists,
+        // and if it doesn't then we don't move the selection.
+        if (i === 0) {
+            if (this.users_matching_view_ids.length > 0) {
+                return this.users_matching_view_ids.at(-1);
+            }
+            return undefined;
+        }
+        // The only way we reach here is if the key isn't found in either list,
+        // which shouldn't happen.
+        blueslip.error("Couldn't find key in buddy list", {
+            key,
+            users_matching_view_ids: this.users_matching_view_ids,
+            other_user_ids: this.other_user_ids,
+        });
+        return undefined;
     }
 
     next_key(key) {
-        const i = this.keys.indexOf(key);
-
-        if (i < 0) {
+        let i = this.users_matching_view_ids.indexOf(key);
+        // Moving from users matching the view to the list of other users,
+        // if they exist, otherwise do nothing.
+        if (i >= 0 && i === this.users_matching_view_ids.length - 1) {
+            if (this.other_user_ids.length > 0) {
+                return this.other_user_ids[0];
+            }
             return undefined;
         }
+        // This is a regular move within the list of users matching the view.
+        if (i >= 0) {
+            return this.users_matching_view_ids[i + 1];
+        }
 
-        return this.keys[i + 1];
+        i = this.other_user_ids.indexOf(key);
+        // If we're at the end of other users, we don't do anything.
+        if (i >= 0 && i === this.other_user_ids.length - 1) {
+            return undefined;
+        }
+        // This is a regular move within other users.
+        if (i >= 0) {
+            return this.other_user_ids[i + 1];
+        }
+
+        // The only way we reach here is if the key isn't found in either list,
+        // which shouldn't happen.
+        blueslip.error("Couldn't find key in buddy list", {
+            key,
+            users_matching_view_ids: this.users_matching_view_ids,
+            other_user_ids: this.other_user_ids,
+        });
+        return undefined;
     }
 
     maybe_remove_key(opts) {
-        const pos = this.keys.indexOf(opts.key);
-
-        if (pos < 0) {
-            return;
+        let pos = this.users_matching_view_ids.indexOf(opts.key);
+        if (pos >= 0) {
+            this.users_matching_view_ids.splice(pos, 1);
+        } else {
+            pos = this.other_user_ids.indexOf(opts.key);
+            if (pos < 0) {
+                return;
+            }
+            this.other_user_ids.splice(pos, 1);
         }
-
-        this.keys.splice(pos, 1);
+        pos = this.all_user_ids.indexOf(opts.key);
+        this.all_user_ids.splice(pos, 1);
 
         if (pos < this.render_count) {
             this.render_count -= 1;
@@ -199,20 +281,22 @@ export class BuddyList extends BuddyListConf {
         const key = opts.key;
         let i;
 
+        const user_id_list = opts.user_id_list;
+
         const current_sub = narrow_state.stream_sub();
         const pm_ids_string = narrow_state.pm_ids_string();
         const pm_ids_list = pm_ids_string ? people.user_ids_string_to_ids_array(pm_ids_string) : [];
         const pm_ids_set = new Set(pm_ids_list);
 
-        for (i = 0; i < this.keys.length; i += 1) {
-            const list_key = this.keys[i];
+        for (i = 0; i < user_id_list.length; i += 1) {
+            const user_id = user_id_list[i];
 
-            if (this.compare_function(key, list_key, current_sub, pm_ids_set) < 0) {
+            if (this.compare_function(key, user_id, current_sub, pm_ids_set) < 0) {
                 return i;
             }
         }
 
-        return this.keys.length;
+        return user_id_list.length;
     }
 
     force_render(opts) {
@@ -253,7 +337,9 @@ export class BuddyList extends BuddyListConf {
             return $li;
         }
 
-        const pos = this.keys.indexOf(key);
+        // We reference all_user_ids to see if we've rendered
+        // it yet.
+        const pos = this.all_user_ids.indexOf(key);
 
         if (pos < 0) {
             // TODO: See ListCursor.get_row() for why this is
@@ -273,22 +359,28 @@ export class BuddyList extends BuddyListConf {
     }
 
     insert_new_html(opts) {
-        const new_key = opts.new_key;
+        const new_pos_in_all_users = opts.new_pos_in_all_users;
         const html = opts.html;
-        const pos = opts.pos;
+        const key_following_insertion = opts.key_following_insertion;
+        const is_subscribed_user = opts.is_subscribed_user;
 
-        if (new_key === undefined) {
-            if (pos === this.render_count) {
+        // This means we're inserting at the end
+        if (key_following_insertion === undefined) {
+            if (new_pos_in_all_users === this.render_count) {
                 this.render_count += 1;
-                this.$users_matching_view_container.append(html);
+                if (is_subscribed_user) {
+                    this.$users_matching_view_container.append(html);
+                } else {
+                    this.$other_users_container.append(html);
+                }
                 this.update_padding();
             }
             return;
         }
 
-        if (pos < this.render_count) {
+        if (new_pos_in_all_users < this.render_count) {
             this.render_count += 1;
-            const $li = this.find_li({key: new_key});
+            const $li = this.find_li({key: key_following_insertion});
             $li.before(html);
             this.update_padding();
         }
@@ -300,22 +392,42 @@ export class BuddyList extends BuddyListConf {
 
         this.maybe_remove_key({key});
 
-        const pos = this.find_position({
+        const new_pos_in_all_users = this.find_position({
             key,
+            user_id_list: this.all_user_ids,
         });
 
-        // Order is important here--get the new_key
+        const current_sub = narrow_state.stream_sub();
+        const pm_ids_string = narrow_state.pm_ids_string();
+        const pm_ids_list = pm_ids_string ? people.user_ids_string_to_ids_array(pm_ids_string) : [];
+        const pm_ids_set = new Set(pm_ids_list);
+        const is_subscribed_user = buddy_data.user_matches_narrow(
+            key,
+            current_sub?.stream_id,
+            pm_ids_set,
+        );
+        const user_id_list = is_subscribed_user
+            ? this.users_matching_view_ids
+            : this.other_user_ids;
+        const new_pos_in_user_list = this.find_position({
+            key,
+            user_id_list,
+        });
+
+        // Order is important here--get the key_following_insertion
         // before mutating our list.  An undefined value
         // corresponds to appending.
-        const new_key = this.keys[pos];
+        const key_following_insertion = user_id_list[new_pos_in_user_list];
 
-        this.keys.splice(pos, 0, key);
+        user_id_list.splice(new_pos_in_user_list, 0, key);
+        this.all_user_ids.splice(new_pos_in_all_users, 0, key);
 
         const html = this.item_to_html({item});
         this.insert_new_html({
-            pos,
+            new_pos_in_all_users,
             html,
-            new_key,
+            key_following_insertion,
+            is_subscribed_user,
         });
     }
 
@@ -329,7 +441,7 @@ export class BuddyList extends BuddyListConf {
         // Add a fudge factor.
         height += 10;
 
-        while (this.render_count < this.keys.length) {
+        while (this.render_count < this.all_user_ids.length) {
             const padding_height = $(this.padding_sel).height();
             const bottom_offset = elem.scrollHeight - elem.scrollTop - padding_height;
 
@@ -363,7 +475,7 @@ export class BuddyList extends BuddyListConf {
     update_padding() {
         padded_widget.update_padding({
             shown_rows: this.render_count,
-            total_rows: this.keys.length,
+            total_rows: this.all_user_ids.length,
             content_sel: this.matching_view_list_selector,
             padding_sel: this.padding_sel,
         });

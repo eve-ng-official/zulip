@@ -33,18 +33,23 @@ let is_searching_users = false;
 
 // TODO: This should ideally be in buddy_list.js since it uses jquery,
 // but can't be easily placed there due to import cycles.
-function update_other_users_empty_placeholder() {
+function update_empty_list_placeholders() {
     const empty_list_message = is_searching_users
         ? $t({defaultMessage: "No matching users."})
         : $t({defaultMessage: "None."});
-    // We're only setting this on the "other users" list, since
-    // the "users matching view" list can never be empty outside of search
-    // and therefore always has the same empty placeholder.
+
     $("#buddy-list-other-users").data("search-results-empty", empty_list_message);
     if ($("#buddy-list-other-users .empty-list-message").length) {
         const empty_list_widget = render_empty_list_widget_for_list({empty_list_message});
         $("#buddy-list-other-users").empty();
         $("#buddy-list-other-users").append(empty_list_widget);
+    }
+
+    $("#buddy-list-users-matching-view").data("search-results-empty", empty_list_message);
+    if ($("#buddy-list-users-matching-view .empty-list-message").length) {
+        const empty_list_widget = render_empty_list_widget_for_list({empty_list_message});
+        $("#buddy-list-users-matching-view").empty();
+        $("#buddy-list-users-matching-view").append(empty_list_widget);
     }
 }
 
@@ -53,7 +58,7 @@ export function set_is_searching_users(val) {
         return;
     }
     is_searching_users = val;
-    update_other_users_empty_placeholder();
+    update_empty_list_placeholders();
 }
 
 const fade_config = {

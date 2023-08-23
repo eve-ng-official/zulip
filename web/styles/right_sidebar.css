@@ -34,7 +34,7 @@ $user_status_emoji_width: 24px;
 
 #buddy-list-users-matching-view,
 #buddy-list-other-users {
-    max-width: 90%;
+    width: 90%;
     margin-left: 10px;
     overflow-x: hidden;
     list-style-position: inside; /* Draw the bullets inside our box */
@@ -112,7 +112,7 @@ $user_status_emoji_width: 24px;
 
     .empty-list-message {
         font-style: italic;
-        color: hsl(0deg 0% 67%);
+        color: var(--color-text-empty-list-message);
         /* Overwrite default empty list font size, to look better under the subheaders. */
         font-size: 14px;
         /* Override .empty-list-message !important styling */
