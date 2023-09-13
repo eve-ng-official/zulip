@@ -450,6 +450,58 @@ test("level", () => {
     assert.equal(buddy_data.level(selma.user_id), 3);
 });
 
+test("compare_function", () => {
+    const first_user_shown_higher = -1;
+    const second_user_shown_higher = 1;
+
+    const stream_id = 1001;
+    const sub = {name: "Rome", subscribed: true, stream_id};
+    stream_data.add_sub(sub);
+    people.add_active_user(alice);
+    people.add_active_user(fred);
+
+    // Alice is higher because of alphabetical sorting.
+    peer_data.set_subscribers(stream_id, []);
+    assert.equal(
+        second_user_shown_higher,
+        buddy_data.compare_function(fred.user_id, alice.user_id, sub, new Set()),
+    );
+
+    // Fred is higher because they're in the narrow and Alice isn't.
+    peer_data.set_subscribers(stream_id, [fred.user_id]);
+    assert.equal(
+        first_user_shown_higher,
+        buddy_data.compare_function(fred.user_id, alice.user_id, sub, new Set()),
+    );
+    assert.equal(
+        second_user_shown_higher,
+        buddy_data.compare_function(alice.user_id, fred.user_id, sub, new Set()),
+    );
+
+    // Fred is higher because they're in the DM conversation and Alice isn't.
+    assert.equal(
+        first_user_shown_higher,
+        buddy_data.compare_function(
+            fred.user_id,
+            alice.user_id,
+            undefined,
+            new Set([fred.user_id]),
+        ),
+    );
+
+    // Alice is higher because of alphabetical sorting.
+    assert.equal(
+        second_user_shown_higher,
+        buddy_data.compare_function(fred.user_id, alice.user_id, undefined, new Set()),
+    );
+
+    // The user is part of a DM conversation, though that's not explicitly in the DM list.
+    assert.equal(
+        first_user_shown_higher,
+        buddy_data.compare_function(me.user_id, alice.user_id, undefined, new Set([fred.user_id])),
+    );
+});
+
 test("user_last_seen_time_status", ({override}) => {
     set_presence(selma.user_id, "active");
     set_presence(me.user_id, "active");

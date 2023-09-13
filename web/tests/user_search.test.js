@@ -79,13 +79,18 @@ function set_input_val(val) {
     $(".user-list-filter").trigger("input");
 }
 
+function stub_buddy_list_empty_list_message_lengths() {
+    $("#buddy-list-users-matching-view .empty-list-message").length = 0;
+    $("#buddy-list-other-users .empty-list-message").length = 0;
+}
+
 test("clear_search", ({override, mock_template}) => {
     override(presence, "get_status", () => "active");
     override(presence, "get_user_ids", () => all_user_ids);
     override(popovers, "hide_all", () => {});
     override(resize, "resize_sidebars", () => {});
 
-    mock_template("empty_list_widget_for_list.hbs", false, () => {});
+    stub_buddy_list_empty_list_message_lengths();
 
     // Empty because no users match this search string.
     override(fake_buddy_list, "populate", (user_ids) => {
@@ -94,22 +99,32 @@ test("clear_search", ({override, mock_template}) => {
     set_input_val("somevalue");
     assert.ok(!$("#user_search_section").hasClass("notdisplayed"));
 
+    // There's an empty list message now (though we need to set this length manually
+    // because the test tooling doesn't automatically do this).
+    $("#buddy-list-other-users .empty-list-message").length = 1;
+    let rendered_empty_list_message = false;
+    mock_template("empty_list_widget_for_list.hbs", false, () => {
+        rendered_empty_list_message = true;
+    });
+
     // Now we're clearing the search string and everyone shows up again.
     override(fake_buddy_list, "populate", (user_ids) => {
         assert.deepEqual(user_ids, {keys: ordered_user_ids});
     });
     $("#clear_search_people_button").trigger("click");
     assert.equal($(".user-list-filter").val(), "");
+    // We re-rendered the empty list message because of `update_other_users_empty_placeholder`
+    assert.ok(rendered_empty_list_message);
     $("#clear_search_people_button").trigger("click");
     assert.ok($("#user_search_section").hasClass("notdisplayed"));
 });
 
-test("escape_search", ({override, mock_template}) => {
+test("escape_search", ({override}) => {
     page_params.realm_presence_disabled = true;
 
     override(resize, "resize_sidebars", () => {});
     override(popovers, "hide_all", () => {});
-    mock_template("empty_list_widget_for_list.hbs", false, () => {});
+    stub_buddy_list_empty_list_message_lengths();
 
     set_input_val("somevalue");
     activity_ui.escape_search();
