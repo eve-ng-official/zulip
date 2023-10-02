@@ -5,6 +5,7 @@ import render_presence_rows from "../templates/presence_rows.hbs";
 
 import * as blueslip from "./blueslip";
 import * as buddy_data from "./buddy_data";
+import {$t} from "./i18n";
 import * as message_viewport from "./message_viewport";
 import * as narrow_state from "./narrow_state";
 import * as padded_widget from "./padded_widget";
@@ -83,6 +84,17 @@ export class BuddyList extends BuddyListConf {
         this.all_user_ids = opts.keys;
 
         this.fill_screen_with_content();
+
+        const current_sub = narrow_state.stream_sub();
+        if (current_sub) {
+            $("#buddy-list-users-matching-view-section-heading").text(
+                $t({defaultMessage: "In this stream"}),
+            );
+        } else {
+            $("#buddy-list-users-matching-view-section-heading").text(
+                $t({defaultMessage: "In this conversation"}),
+            );
+        }
     }
 
     render_more(opts) {
