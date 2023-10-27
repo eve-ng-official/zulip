@@ -69,9 +69,15 @@ export function potential_subscribers(stream_id: number): User[] {
     return people.filter_all_users(is_potential_subscriber);
 }
 
-export function get_subscriber_count(stream_id: number): number {
-    const subscribers = get_user_set(stream_id);
-    return subscribers.size;
+export function get_subscriber_count(stream_id: number, include_bots: boolean = true): number {
+    let subscribers = [...get_user_set(stream_id).keys()];
+
+    if (!include_bots) {
+        const active_user_ids = people.get_realm_active_human_user_ids();
+        subscribers = subscribers.filter((user_id) => active_user_ids.includes(user_id));
+    }
+
+    return subscribers.length;
 }
 
 export function get_subscribers(stream_id: number): number[] {

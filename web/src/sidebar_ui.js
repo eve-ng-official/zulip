@@ -9,6 +9,7 @@ import * as resize from "./resize";
 import * as settings_config from "./settings_config";
 import * as settings_data from "./settings_data";
 import * as spectators from "./spectators";
+import * as stream_edit_toggler from "./stream_edit_toggler";
 import {user_settings} from "./user_settings";
 
 export let left_sidebar_expanded_as_overlay = false;
@@ -210,5 +211,14 @@ export function initialize_right_sidebar() {
             "fa-caret-left",
             is_collapsed,
         );
+    });
+
+    // There's no way to get to the subscriber view by url,
+    // so we have this click handler to change the tab.
+    // Ideally in the future we have a url structure to go
+    // directly to the subscriber settings without this.
+    stream_edit_toggler.setup_toggler();
+    $("#buddy-list-users-matching-view-container").on("click", ".view-all-subscribers-link", () => {
+        stream_edit_toggler.toggler.goto("subscriber_settings");
     });
 }

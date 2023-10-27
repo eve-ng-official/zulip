@@ -121,6 +121,8 @@ function test(label, f) {
 
         // Set to an empty list since we're not testing CSS.
         $("#buddy-list-users-matching-view").children = () => [];
+        $("#buddy-list-users-matching-view-container .view-all-subscribers-link").remove = () => {};
+        $("#buddy-list-other-users-container .view-all-users-link").remove = () => {};
 
         presence.presence_info.set(alice.user_id, {status: "active"});
         presence.presence_info.set(fred.user_id, {status: "active"});
@@ -232,6 +234,7 @@ test("presence_list_full_update", ({override, mock_template}) => {
     });
     $("#buddy-list-users-matching-view .empty-list-message").length = 0;
     $("#buddy-list-other-users .empty-list-message").length = 0;
+    $("#buddy-list-other-users-container .view-all-users-link").length = 0;
 
     $(".user-list-filter").trigger("focus");
 
@@ -326,6 +329,9 @@ test("handlers", ({override, mock_template}) => {
         $("#buddy-list-users-matching-view").children = () => [];
         $("#buddy-list-users-matching-view .empty-list-message").length = 0;
         $("#buddy-list-other-users .empty-list-message").length = 0;
+        $("#buddy-list-other-users-container .view-all-users-link").length = 0;
+        $("#buddy-list-users-matching-view-container .view-all-subscribers-link").remove = () => {};
+        $("#buddy-list-other-users-container .view-all-users-link").remove = () => {};
         buddy_list.populate({
             keys: [me.user_id, alice.user_id, fred.user_id],
         });
@@ -396,8 +402,10 @@ test("first/prev/next", ({override, override_rewire, mock_template}) => {
     override_rewire(buddy_data, "user_matches_narrow", override_user_matches_narrow);
     mock_template("presence_rows.hbs", false, () => {});
     override(padded_widget, "update_padding", () => {});
+
     $("#buddy-list-users-matching-view .empty-list-message").length = 0;
     $("#buddy-list-other-users .empty-list-message").length = 0;
+    $("#buddy-list-other-users-container .view-all-users-link").length = 0;
 
     // empty list
     assert.equal(buddy_list.first_key(), undefined);
@@ -745,6 +753,8 @@ test("initialize", ({override}) => {
         buddy_list.$users_matching_view_container.append = () => {};
         buddy_list.$other_users_container = $("#buddy-list-other-users");
         buddy_list.$other_users_container.append = () => {};
+        $("#buddy-list-users-matching-view-container .view-all-subscribers-link").remove = () => {};
+        $("#buddy-list-other-users-container .view-all-users-link").remove = () => {};
         clear_buddy_list(buddy_list);
         page_params.presences = {};
     }

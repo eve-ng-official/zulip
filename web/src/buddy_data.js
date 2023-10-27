@@ -60,6 +60,10 @@ export function set_is_searching_users(val) {
     update_empty_list_placeholders();
 }
 
+export function get_is_searching_users() {
+    return is_searching_users;
+}
+
 export function get_user_circle_class(user_id) {
     const status = presence.get_status(user_id);
 

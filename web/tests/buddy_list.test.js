@@ -48,6 +48,12 @@ const bob = {
     full_name: "Bob Smith",
 };
 people.add_active_user(bob);
+const chris = {
+    email: "chris@zulip.com",
+    user_id: 20,
+    full_name: "Chris Smith",
+};
+people.add_active_user(chris);
 const $alice_li = $.create("alice-stub");
 const $bob_li = $.create("bob-stub");
 
@@ -56,6 +62,9 @@ function stub_buddy_list_elements() {
     $("#buddy-list-users-matching-view").children = () => [];
     $("#buddy-list-users-matching-view .empty-list-message").length = 0;
     $("#buddy-list-other-users .empty-list-message").length = 0;
+    $("#buddy-list-other-users-container .view-all-users-link").length = 0;
+    $("#buddy-list-users-matching-view-container .view-all-subscribers-link").remove = () => {};
+    $("#buddy-list-other-users-container .view-all-users-link").remove = () => {};
 }
 
 run_test("get_items", () => {
@@ -113,6 +122,7 @@ run_test("basics", ({override}) => {
 run_test("split list", ({override, override_rewire}) => {
     const buddy_list = new BuddyList();
     init_simulated_scrolling();
+    stub_buddy_list_elements();
 
     override_rewire(buddy_data, "user_matches_narrow", override_user_matches_narrow);
 
@@ -120,18 +130,15 @@ run_test("split list", ({override, override_rewire}) => {
         if (opts.items.length > 0) {
             return "html-stub";
         }
-        return "empty";
+        return "empty-list";
     });
     override(message_viewport, "height", () => 550);
     override(padded_widget, "update_padding", () => {});
-    stub_buddy_list_elements();
 
     let appended_to_users_matching_view = false;
     $("#buddy-list-users-matching-view").append = (html) => {
         if (html === "html-stub") {
             appended_to_users_matching_view = true;
-        } else {
-            assert.equal(html, "empty");
         }
     };
 
@@ -139,8 +146,6 @@ run_test("split list", ({override, override_rewire}) => {
     $("#buddy-list-other-users").append = (html) => {
         if (html === "html-stub") {
             appended_to_other_users = true;
-        } else {
-            assert.equal(html, "empty");
         }
     };
 
@@ -178,6 +183,7 @@ run_test("find_li", ({override}) => {
     const buddy_list = new BuddyList();
 
     override(buddy_list, "fill_screen_with_content", () => {});
+    stub_buddy_list_elements();
 
     clear_buddy_list(buddy_list);
     buddy_list_add_user_matching_view(alice.user_id, $alice_li);
@@ -197,6 +203,7 @@ run_test("find_li", ({override}) => {
 run_test("fill_screen_with_content early break on big list", ({override}) => {
     const buddy_list = new BuddyList();
     const elem = init_simulated_scrolling();
+    stub_buddy_list_elements();
 
     let chunks_inserted = 0;
     override(buddy_list, "render_more", () => {
@@ -368,6 +375,7 @@ run_test("scrolling", ({override}) => {
         tried_to_fill = true;
     });
     init_simulated_scrolling();
+    stub_buddy_list_elements();
 
     clear_buddy_list(buddy_list);
     assert.ok(tried_to_fill);
