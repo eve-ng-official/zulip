@@ -1,6 +1,5 @@
 import $ from "jquery";
 
-import * as activity_ui from "./activity_ui";
 import * as compose_recipient from "./compose_recipient";
 import * as message_lists from "./message_lists";
 import * as message_view_header from "./message_view_header";
@@ -44,12 +43,6 @@ export function show(opts) {
     search.clear_search_form();
     opts.complete_rerender();
 
-    // This has to happen after resetting the current narrow filter, so
-    // that the buddy list is rendered with the correct narrow state.
-    if (activity_ui.user_filter) {
-        activity_ui.build_user_sidebar();
-    }
-
     // Misc.
     if (opts.is_recent_view) {
         resize.update_recent_view_filters_height();
@@ -71,10 +64,6 @@ export function hide(opts) {
     // to a filter and back to view
     // before it completely re-rerenders.
     message_view_header.render_title_area();
-
-    if (activity_ui.user_filter) {
-        activity_ui.build_user_sidebar();
-    }
 
     // Fire our custom event
     $("#message_feed_container").trigger("message_feed_shown");

@@ -1,6 +1,7 @@
 import $ from "jquery";
 
 import * as about_zulip from "./about_zulip";
+import * as activity_ui from "./activity_ui";
 import * as admin from "./admin";
 import * as blueslip from "./blueslip";
 import * as browser_history from "./browser_history";
@@ -34,6 +35,17 @@ import {user_settings} from "./user_settings";
 
 // Read https://zulip.readthedocs.io/en/latest/subsystems/hashchange-system.html
 // or locally: docs/subsystems/hashchange-system.md
+
+// This would ideally live in a different module, but is here
+// for now to avoid circular imports.
+// Note: This has to happen after resetting the current narrow
+// filter, so that the buddy list is rendered with the correct
+// narrow state.
+function rebuild_user_sidebar() {
+    if (activity_ui.user_filter) {
+        activity_ui.build_user_sidebar();
+    }
+}
 
 function maybe_hide_recent_view() {
     if (recent_view_util.is_visible()) {
@@ -167,11 +179,13 @@ function do_hashchange_normal(from_reload) {
                 narrow_opts.then_select_offset = location_data_for_hash.narrow_offset;
             }
             narrow.activate(operators, narrow_opts);
+            rebuild_user_sidebar();
             return true;
         }
         case "":
         case "#":
             show_home_view();
+            rebuild_user_sidebar();
             break;
         case "#recent_topics":
             // The URL for Recent Conversations was changed from
@@ -183,17 +197,21 @@ function do_hashchange_normal(from_reload) {
             // this detail in the browser's forward/back session history.
             recent_view_ui.show();
             window.location.replace("#recent");
+            rebuild_user_sidebar();
             break;
         case "#recent":
             maybe_hide_inbox();
             recent_view_ui.show();
+            rebuild_user_sidebar();
             break;
         case "#inbox":
             maybe_hide_recent_view();
             inbox_ui.show();
+            rebuild_user_sidebar();
             break;
         case "#all_messages":
             show_all_message_view();
+            rebuild_user_sidebar();
             break;
         case "#keyboard-shortcuts":
         case "#message-formatting":
@@ -209,6 +227,7 @@ function do_hashchange_normal(from_reload) {
             break;
         default:
             show_home_view();
+            rebuild_user_sidebar();
     }
     return false;
 }
