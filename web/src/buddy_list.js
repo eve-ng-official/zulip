@@ -14,7 +14,7 @@ import * as scroll_util from "./scroll_util";
 class BuddyListConf {
     matching_view_list_selector = "#buddy-list-users-matching-view";
     other_user_list_selector = "#buddy-list-other-users";
-    scroll_container_sel = "#buddy_list_wrapper";
+    scroll_container_selector = "#buddy_list_wrapper";
     item_sel = "li.user_sidebar_entry";
     padding_sel = "#buddy_list_wrapper_padding";
 
@@ -115,7 +115,10 @@ export class BuddyList extends BuddyListConf {
         this.$users_matching_view_container.append(subscribed_users_html);
 
         // Remove the empty list message before adding users
-        if ($(`${this.other_user_list_selector} .empty-list-message`).length > 0 && other_users.length) {
+        if (
+            $(`${this.other_user_list_selector} .empty-list-message`).length > 0 &&
+            other_users.length
+        ) {
             this.$other_users_container.empty();
         }
         const other_users_html = this.items_to_html({
@@ -319,7 +322,9 @@ export class BuddyList extends BuddyListConf {
     fill_screen_with_content() {
         let height = this.height_to_fill();
 
-        const elem = scroll_util.get_scroll_element($(this.scroll_container_sel)).expectOne()[0];
+        const elem = scroll_util
+            .get_scroll_element($(this.scroll_container_selector))
+            .expectOne()[0];
 
         // Add a fudge factor.
         height += 10;
@@ -348,7 +353,7 @@ export class BuddyList extends BuddyListConf {
     start_scroll_handler() {
         // We have our caller explicitly call this to make
         // sure everything's in place.
-        const $scroll_container = scroll_util.get_scroll_element($(this.scroll_container_sel));
+        const $scroll_container = scroll_util.get_scroll_element($(this.scroll_container_selector));
 
         $scroll_container.on("scroll", () => {
             this.fill_screen_with_content();
