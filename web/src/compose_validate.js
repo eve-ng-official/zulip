@@ -509,6 +509,15 @@ function validate_stream_message(scheduling_message) {
             );
             return false;
         }
+	if ( !page_params.is_admin && !page_params.is_moderator && topic != "General" ) {
+		compose_banner.show_error_message(
+			$t({defaultMessage: "General Topic ONLY."}),
+			compose_banner.CLASSNAMES.topic_missing,
+			$banner_container,
+			$("#stream_message_recipient_topic"),
+		);
+		return false;
+	}
     }
 
     const sub = stream_data.get_sub(stream_name);
