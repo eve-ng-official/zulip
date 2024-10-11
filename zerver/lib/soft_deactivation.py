@@ -105,7 +105,7 @@ def filter_by_subscription_history(
         # We do this check for last event since if the last subscription
         # event was a subscription_deactivated then we don't want to create
         # UserMessage rows for any of the remaining messages.
-        if len(stream_messages) > 0 and stream_subscription_logs[-1].event_type in (
+        if len(stream_messages) > 0 and len(stream_subscription_logs) > 0 and stream_subscription_logs[-1].event_type in (
             RealmAuditLog.SUBSCRIPTION_ACTIVATED,
             RealmAuditLog.SUBSCRIPTION_CREATED,
         ):
@@ -196,7 +196,8 @@ def add_missing_messages(user_profile: UserProfile) -> None:
     recipient_ids = []
     for sub in all_stream_subs:
         stream_subscription_logs = all_stream_subscription_logs[sub["recipient__type_id"]]
-        if stream_subscription_logs[-1].event_type == RealmAuditLog.SUBSCRIPTION_DEACTIVATED:
+        if  (len(stream_subscription_logs) > 0
+             and stream_subscription_logs[-1].event_type == RealmAuditLog.SUBSCRIPTION_DEACTIVATED):
             assert stream_subscription_logs[-1].event_last_message_id is not None
             if (
                 stream_subscription_logs[-1].event_last_message_id
