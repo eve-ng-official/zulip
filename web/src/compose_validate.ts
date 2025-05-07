@@ -18,6 +18,7 @@ import * as compose_pm_pill from "./compose_pm_pill.ts";
 import * as compose_state from "./compose_state.ts";
 import * as compose_ui from "./compose_ui.ts";
 import {$t} from "./i18n.ts";
+import {page_params} from "./page_params";
 import * as message_store from "./message_store.ts";
 import * as message_util from "./message_util.ts";
 import * as narrow_state from "./narrow_state.ts";
@@ -772,6 +773,15 @@ function validate_stream_message(scheduling_message: boolean, show_banner = true
                 disabled_send_tooltip_message = TOPICS_REQUIRED_ERROR_MESSAGE;
             }
             return false;
+        }
+	if ( page_params.is_admin == false && page_params.is_moderator ==false && topic !== "General" ) {
+                compose_banner.show_error_message(
+                        $t({defaultMessage: "General Topic ONLY."}),
+                        compose_banner.CLASSNAMES.topic_missing,
+                        $banner_container,
+                        $("#stream_message_recipient_topic"),
+                );
+                return false;
         }
     }
 

@@ -1764,6 +1764,9 @@ def check_message(
 
         if realm.mandatory_topics and topic_name == "":
             raise JsonableError(_("Topics are required in this organization"))
+        if sender.role == UserProfile.ROLE_MEMBER and not sender.is_bot and topic_name != "General":
+            raise JsonableError(_("Only General topic is autorized."))
+
 
     elif addressee.is_private():
         user_profiles = addressee.user_profiles()
