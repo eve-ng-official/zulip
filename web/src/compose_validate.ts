@@ -18,7 +18,7 @@ import * as compose_pm_pill from "./compose_pm_pill.ts";
 import * as compose_state from "./compose_state.ts";
 import * as compose_ui from "./compose_ui.ts";
 import {$t} from "./i18n.ts";
-import {page_params} from "./page_params";
+import {page_params} from "./page_params.ts";
 import * as message_store from "./message_store.ts";
 import * as message_util from "./message_util.ts";
 import * as narrow_state from "./narrow_state.ts";
