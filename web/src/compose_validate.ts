@@ -54,6 +54,7 @@ export const NO_PRIVATE_RECIPIENT_ERROR_MESSAGE = $t({
     defaultMessage: "Please add a valid recipient.",
 });
 export const NO_CHANNEL_SELECTED_ERROR_MESSAGE = $t({defaultMessage: "Please select a channel."});
+export const TOPIC_GENERAL_ONLY_ERROR_MESSAGE = $t({defaultMessage: "Please select General Topic."});
 export const TOPICS_REQUIRED_ERROR_MESSAGE = $t({
     defaultMessage: "Topics are required in this organization.",
 });
@@ -775,12 +776,16 @@ function validate_stream_message(scheduling_message: boolean, show_banner = true
             return false;
         }
 	if ( page_params.is_admin == false && page_params.is_moderator ==false && topic !== "General" ) {
-                compose_banner.show_error_message(
+		report_validation_error(
                         $t({defaultMessage: "General Topic ONLY."}),
                         compose_banner.CLASSNAMES.topic_missing,
                         $banner_container,
-                        $("#stream_message_recipient_topic"),
+                        $("input#stream_message_recipient_topic"),
                 );
+		if (is_validating_compose_box) {
+			disabled_send_tooltip_message = TOPIC_GENERAL_ONLY_ERROR_MESSAGE
+		}
+
                 return false;
         }
     }
