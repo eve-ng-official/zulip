@@ -775,7 +775,9 @@ function validate_stream_message(scheduling_message: boolean, show_banner = true
             }
             return false;
         }
+	console.log ( "admin: "+page_params.is_admin + ",moderator: " + page_params.is_moderator + ",topic: "+ topic )
 	if ( page_params.is_admin == false && page_params.is_moderator ==false && topic !== "General" ) {
+		console.log("Topic is forbidden")
 		report_validation_error(
                         $t({defaultMessage: "General Topic ONLY."}),
                         compose_banner.CLASSNAMES.topic_missing,
